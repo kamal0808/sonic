@@ -38,10 +38,12 @@ async function getChatCompletion(messages) {
   const response = await client.chat.completions.create({
     model: 'gpt-4o',
     messages: messages,
+    stream: true, // enable streaming
     // maxTokens: 150, // Adjust as needed
     temperature: 0.7, // Adjust as needed
     response_format: { "type": "json_object" }
-  });
+  },
+  { responseType: 'stream' });
   return response.choices[0].message.content;
 }
 

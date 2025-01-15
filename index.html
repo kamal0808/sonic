@@ -2,96 +2,278 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>AI Code Generator</title>
+    <title>AI Code Generator (Successive + Typewriter)</title>
     <style>
+      * { box-sizing: border-box; }
       body {
+        margin: 0;
         font-family: sans-serif;
-        margin: 0 auto;
-        max-width: 800px;
-        padding: 1rem;
+        transition: background 0.3s, color 0.3s;
       }
+      .light-mode {
+        background: #fff;
+        color: #000;
+      }
+      .dark-mode {
+        background: #2d2d2d;
+        color: #fff;
+      }
+
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 20px;
+        border-bottom: 1px solid #ccc;
+      }
+      .toggle-mode-btn {
+        padding: 6px 12px;
+        border: 1px solid #999;
+        cursor: pointer;
+        background: #f5f5f5;
+      }
+      .dark-mode .toggle-mode-btn {
+        background: #444;
+        color: #fff;
+        border: 1px solid #666;
+      }
+
+      .container {
+        display: flex;
+        height: calc(100vh - 50px);
+      }
+      .left-panel {
+        width: 350px;
+        border-right: 1px solid #ccc;
+        padding: 10px;
+        overflow-y: auto;
+      }
+      .right-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      input[type="text"],
       textarea {
         width: 100%;
-        height: 100px;
+        margin: 5px 0;
+        padding: 8px;
       }
-      pre {
-        background: #f4f4f4;
-        padding: 1rem;
-        overflow: auto;
-        max-height: 300px;
+      button {
+        padding: 6px 12px;
+        margin: 5px 0;
+        cursor: pointer;
       }
-      #preview {
-        width: 100%;
-        height: 300px;
+
+      /* Logs */
+      .log-area {
         border: 1px solid #ccc;
-        margin-top: 1rem;
+        background: #fafafa;
+        padding: 8px;
+        height: 100px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+        font-size: 14px;
+      }
+      .dark-mode .log-area {
+        background: #444;
+        color: #eee;
+        border: 1px solid #666;
+      }
+
+      /* Code area for typewriter effect */
+      .code-area {
+        background: #f4f4f4;
+        padding: 10px;
+        font-family: monospace;
+        font-size: 14px;
+        height: 120px;
+        overflow-y: auto;
+        white-space: pre-wrap;
+      }
+      .dark-mode .code-area {
+        background: #333;
+        color: #eee;
+      }
+
+      /* Preview takes remaining space */
+      iframe {
+        flex: 1;
+        border: none;
+      }
+      .dark-mode iframe {
+        background: #2d2d2d;
       }
     </style>
   </head>
-  <body>
-    <h1>AI Code Generator</h1>
-    
-    <label for="prompt">Enter Prompt:</label><br>
-    <textarea id="prompt"></textarea><br>
-    
-    <label for="relevantCode">Relevant Code (optional):</label><br>
-    <textarea id="relevantCode"></textarea><br>
-    
-    <button id="generateBtn">Generate Code</button>
-    <button id="clearBtn">Clear Conversation</button>
+  <body class="light-mode">
+    <div class="header">
+      <h2>AI Code Generator</h2>
+      <button id="toggleModeBtn" class="toggle-mode-btn">Switch to Dark Mode</button>
+    </div>
+    <div class="container">
+      <!-- LEFT PANEL -->
+      <div class="left-panel">
+        <h3>Create/Reset Project</h3>
+        <input type="text" id="projectName" placeholder="Project Name (optional)" />
+        <button id="createProjectBtn">Create Project</button>
+        <p>Project ID: <span id="projectIdSpan">N/A</span></p>
 
-    <h2>Generated Code:</h2>
-    <pre id="output"></pre>
-    
-    <h3>Preview (for simple HTML/JS/CSS only)</h3>
-    <iframe id="preview"></iframe>
+        <h3>Prompt</h3>
+        <textarea id="prompt" rows="5"></textarea>
+        <button id="updateBtn">Update Project</button>
+
+        <h3>Logs</h3>
+        <div class="log-area" id="logArea"></div>
+      </div>
+
+      <!-- RIGHT PANEL -->
+      <div class="right-panel">
+        <div id="codeArea" class="code-area"></div>
+        <iframe id="previewFrame"></iframe>
+      </div>
+    </div>
 
     <script>
-      const generateBtn = document.getElementById('generateBtn');
-      const clearBtn = document.getElementById('clearBtn');
-      const promptEl = document.getElementById('prompt');
-      const relevantCodeEl = document.getElementById('relevantCode');
-      const outputEl = document.getElementById('output');
-      const previewEl = document.getElementById('preview');
-
-      // Send the prompt & relevant code to the server
-      generateBtn.addEventListener('click', async () => {
-        const prompt = promptEl.value;
-        const relevantCode = relevantCodeEl.value;
-
-        // POST to /generate
-        try {
-          const res = await fetch('/generate', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ prompt, relevantCode }),
-          });
-
-          const data = await res.json();
-          if (data.code) {
-            outputEl.textContent = data.code;
-            // If the code is HTML/JS, we can preview in the iframe
-            previewEl.srcdoc = data.code;
-          } else if (data.error) {
-            outputEl.textContent = 'Error: ' + data.error;
-          }
-        } catch (e) {
-          console.error(e);
-          outputEl.textContent = 'An error occurred';
+      // LIGHT/DARK MODE
+      const bodyEl = document.body;
+      const toggleModeBtn = document.getElementById('toggleModeBtn');
+      toggleModeBtn.addEventListener('click', () => {
+        if (bodyEl.classList.contains('light-mode')) {
+          bodyEl.classList.remove('light-mode');
+          bodyEl.classList.add('dark-mode');
+          toggleModeBtn.textContent = 'Switch to Light Mode';
+        } else {
+          bodyEl.classList.remove('dark-mode');
+          bodyEl.classList.add('light-mode');
+          toggleModeBtn.textContent = 'Switch to Dark Mode';
         }
       });
 
-      // Clear conversation on the server
-      clearBtn.addEventListener('click', async () => {
-        await fetch('/clear', { method: 'POST' });
-        promptEl.value = '';
-        relevantCodeEl.value = '';
-        outputEl.textContent = '';
-        previewEl.srcdoc = '';
+      // Elements
+      const projectNameEl = document.getElementById('projectName');
+      const createProjectBtn = document.getElementById('createProjectBtn');
+      const projectIdSpan = document.getElementById('projectIdSpan');
+      const promptEl = document.getElementById('prompt');
+      const updateBtn = document.getElementById('updateBtn');
+      const logArea = document.getElementById('logArea');
+      const codeArea = document.getElementById('codeArea');
+      const previewFrame = document.getElementById('previewFrame');
+
+      let currentProjectId = null;
+
+      // CREATE PROJECT
+      createProjectBtn.addEventListener('click', async () => {
+        try {
+          const resp = await fetch('/create-project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ projectName: projectNameEl.value }),
+          });
+          const data = await resp.json();
+          if (data.projectId) {
+            currentProjectId = data.projectId;
+            projectIdSpan.textContent = currentProjectId;
+            logArea.textContent = `Created project: ${currentProjectId}\n`;
+            codeArea.textContent = '';
+            previewFrame.src = 'about:blank';
+          }
+        } catch (err) {
+          console.error(err);
+          logArea.textContent += 'Error creating project.\n';
+        }
       });
+
+      // UPDATE PROJECT
+      updateBtn.addEventListener('click', async () => {
+        if (!currentProjectId) {
+          alert('No project. Create a project first.');
+          return;
+        }
+        codeArea.textContent = ''; // Clear code area
+        logArea.textContent = '';  // Clear logs
+
+        try {
+          const resp = await fetch('/update-project', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              projectId: currentProjectId,
+              prompt: promptEl.value,
+            }),
+          });
+          if (!resp.body) {
+            logArea.textContent += 'No response body.\n';
+            return;
+          }
+
+          const reader = resp.body.getReader();
+          const decoder = new TextDecoder('utf-8');
+          let done = false;
+          let currentEvent = null;
+
+          // We'll store partial text until we parse SSE lines
+          while (!done) {
+            const { value, done: doneReading } = await reader.read();
+            done = doneReading;
+            if (value) {
+              const chunk = decoder.decode(value, { stream: true });
+              // chunk can contain multiple SSE event lines
+              const lines = chunk.split('\n');
+
+              for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                if (line.startsWith('event:')) {
+                  // e.g. "event: partial"
+                  currentEvent = line.replace('event:', '').trim();
+                } else if (line.startsWith('data:')) {
+                  const dataStr = line.replace('data:', '').trim();
+                  try {
+                    const parsed = JSON.parse(dataStr);
+                    handleSSE(currentEvent, parsed);
+                  } catch (err) {
+                    // Possibly partial JSON or a parse error
+                    console.error('JSON parse error:', dataStr, err);
+                  }
+                }
+              }
+            }
+          }
+
+        } catch (err) {
+          console.error(err);
+          logArea.textContent += `Error: ${err.message}\n`;
+        }
+      });
+
+      function handleSSE(eventName, payload) {
+        switch (eventName) {
+          case 'status':
+            logArea.textContent += payload.status + '\n';
+            break;
+          case 'partial':
+            // We got a chunk of code. Show it in a "typewriter" manner, char by char
+            for (const ch of payload.text) {
+              codeArea.textContent += ch;
+            }
+            // Scroll to bottom
+            codeArea.scrollTop = codeArea.scrollHeight;
+            break;
+          case 'file-written':
+            logArea.textContent += `File written: ${payload.path}\n`;
+            break;
+          case 'command-output':
+            logArea.textContent += `[${payload.command}] ${payload.output}`;
+            break;
+          case 'done':
+            // Attempt to load /projects/{projectId}/index.html in the iframe
+            logArea.textContent += 'Done! Reloading preview...\n';
+            previewFrame.src = `/projects/${payload.projectId}/index.html`;
+            break;
+        }
+      }
     </script>
   </body>
 </html>
-  
