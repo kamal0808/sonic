@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI Code Generator</title>
+    <style>
+      body {
+        font-family: sans-serif;
+        margin: 0 auto;
+        max-width: 800px;
+        padding: 1rem;
+      }
+      textarea {
+        width: 100%;
+        height: 100px;
+      }
+      pre {
+        background: #f4f4f4;
+        padding: 1rem;
+        overflow: auto;
+        max-height: 300px;
+      }
+      #preview {
+        width: 100%;
+        height: 300px;
+        border: 1px solid #ccc;
+        margin-top: 1rem;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AI Code Generator</h1>
+    
+    <label for="prompt">Enter Prompt:</label><br>
+    <textarea id="prompt"></textarea><br>
+    
+    <label for="relevantCode">Relevant Code (optional):</label><br>
+    <textarea id="relevantCode"></textarea><br>
+    
+    <button id="generateBtn">Generate Code</button>
+    <button id="clearBtn">Clear Conversation</button>
+
+    <h2>Generated Code:</h2>
+    <pre id="output"></pre>
+    
+    <h3>Preview (for simple HTML/JS/CSS only)</h3>
+    <iframe id="preview"></iframe>
+
+    <script>
+      const generateBtn = document.getElementById('generateBtn');
+      const clearBtn = document.getElementById('clearBtn');
+      const promptEl = document.getElementById('prompt');
+      const relevantCodeEl = document.getElementById('relevantCode');
+      const outputEl = document.getElementById('output');
+      const previewEl = document.getElementById('preview');
+
+      // Send the prompt & relevant code to the server
+      generateBtn.addEventListener('click', async () => {
+        const prompt = promptEl.value;
+        const relevantCode = relevantCodeEl.value;
+
+        // POST to /generate
+        try {
+          const res = await fetch('/generate', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ prompt, relevantCode }),
+          });
+
+          const data = await res.json();
+          if (data.code) {
+            outputEl.textContent = data.code;
+            // If the code is HTML/JS, we can preview in the iframe
+            previewEl.srcdoc = data.code;
+          } else if (data.error) {
+            outputEl.textContent = 'Error: ' + data.error;
+          }
+        } catch (e) {
+          console.error(e);
+          outputEl.textContent = 'An error occurred';
+        }
+      });
+
+      // Clear conversation on the server
+      clearBtn.addEventListener('click', async () => {
+        await fetch('/clear', { method: 'POST' });
+        promptEl.value = '';
+        relevantCodeEl.value = '';
+        outputEl.textContent = '';
+        previewEl.srcdoc = '';
+      });
+    </script>
+  </body>
+</html>
+  
